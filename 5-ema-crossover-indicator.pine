@@ -1,0 +1,44 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © ramanbroach
+
+//@version=5
+indicator("5 EMAs with Crossover indicator", "", overlay=true)
+
+
+//len1 = input.int(8, "MA1")
+len2 = input.int(13, "MA2")
+len3 = input.int(21, "MA3")
+len4 = input.int(55, "MA4")
+len5 = input.int(100, "MA5")
+len6 = input.int(200, "MA6")
+
+//ma1 = ta.ema(close, len1)
+ma2 = ta.ema(close, len2)
+ma3 = ta.ema(close, len3)
+ma4 = ta.ema(close, len4)
+ma5 = ta.ema(close, len5)
+ma6 = ta.ema(close, len6)
+
+//plot(ma1, title="MA1", color=color.gray)
+plot(ma2, title="MA2", color=color.orange)
+plot(ma3, title="MA3", color=#030ffb)
+plot(ma4, title="MA4", color=color.aqua, linewidth = 2)
+plot(ma5, title="MA5", color=color.rgb(241, 191, 229))
+plot(ma6, title="MA6", color=color.rgb(223, 125, 185), linewidth = 2)
+
+//buy1 = ta.crossover(ma1, ma2) or  ta.crossover(ma1, ma3) or  ta.crossover(ma1, ma4) or  ta.crossover(ma1, ma5) or  ta.crossover(ma1, ma6)
+//goldenbuy = ta.crossover(ma4, ma6)
+//buy = ta.crossover(ma2, ma3) or  ta.crossover(ma3, ma4)
+//goldensell = ta.crossunder(ma4, ma6)
+//sell = ta.crossunder(ma2, ma3) or  ta.crossunder(ma3, ma4)
+
+plot(ta.crossover(ma4, ma6) ? ma4 : na, title="B", color=color.green, style=plot.style_circles, linewidth = 10 )
+plot(ta.crossover(ma2, ma3) ? ma2 : na, color=color.green, style=plot.style_circles, linewidth = 5 )
+plot(ta.crossover(ma3, ma4) ? ma3 : na, color=color.green, style=plot.style_circles, linewidth = 5 )
+plot(ta.crossunder(ma4, ma6) ? ma4 : na, title="B", color=color.red, style=plot.style_circles, linewidth = 10 )
+plot(ta.crossunder(ma2, ma3) ? ma2 : na, color=color.red, style=plot.style_circles, linewidth = 5 )
+plot(ta.crossunder(ma3, ma4) ? ma3 : na, color=color.red, style=plot.style_circles, linewidth = 5 )
+//plotshape(goldenbuy, title="Golden Buy Signal", text="B", textcolor=color.black, style=shape.labelup, size=size.tiny, location=location.belowbar, color=#fffb00)
+//plotshape(buy, title="Buy Signal", text="B", textcolor=color.white, style=shape.labelup, size=size.tiny, location=location.belowbar, color=color.green)
+//plotshape(goldensell, title="Golden Short Signal", text="S", textcolor=color.black, style=shape.labeldown, size=size.tiny, location=location.abovebar, color=#fffb00)
+//plotshape(sell, title="Short Signal", text="S", textcolor=color.white, style=shape.labeldown, size=size.tiny, location=location.abovebar, color=color.red)
