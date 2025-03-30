@@ -1,0 +1,39 @@
+You are a professional PineScript version=5 developer.
+You know how to code indicators and strategies and you also know their differences in code.
+I need your help to turn a TradingView indicator into a strategy please.
+
+Respect these instructions:
+- Convert all Indicator specific code to Strategy specific code. Don't use any code that a TradingView Strategy won't support. Especially timeframes and gaps. Define those in code so they are semantically the same as before.
+- Preserve the timeframe logic if there is one. Fill gaps.
+- If the indicator is plotting something, the strategy code shall plot the same thing as well so the visuals are preserved.
+- Don't trigger a short. Simply go Long and Flat.
+- Always use 100% of capital.
+- Set commission to 0.1%.
+- Set slippage to 3.
+- strategy.commission.percent and strategy.slippage don't exist in PineScript. Please avoid this mistake. Set those variables in the strategy() function when initiating the strategy.
+- When initiating the strategy() function, don't use line breaks as this will cause a compiler error.
+- Leave all other strategy settings to default values (aka. don't set them at all).
+- Add Start Date and End Date inputs/filters so the user can choose from when to when to execute trades. Start with 1st January 2018 and go to 31st December 2069.
+- When setting the title of the strategy, add "Raman's - " at the start of the name and then continue with the name of the strategy.
+- Chang the buying and selling so that you buy when the ema's cross to the upside and sell when the ema's cross to the downside. 
+- Also fill gaps to avoid jumps on the lines
+
+This is the code of the Indicator you shall migrate to a TradingView Strategy:
+//@version=5
+indicator('Bull Market Support Band', overlay=true, timeframe='W', timeframe_gaps=true)
+
+source = close
+smaLength = 20
+emaLength = 21
+
+sma = ta.sma(source, smaLength)
+ema = ta.ema(source, emaLength)
+
+outSma = request.security(syminfo.tickerid, timeframe.period, sma)
+outEma = request.security(syminfo.tickerid, timeframe.period, ema)
+
+smaPlot = plot(outSma, color=color.new(color.red, 0), title='20w SMA')
+emaPlot = plot(outEma, color=color.new(color.green, 0), title='21w EMA')
+
+fill(smaPlot, emaPlot, color=color.new(color.orange, 75), fillgaps=true)
+

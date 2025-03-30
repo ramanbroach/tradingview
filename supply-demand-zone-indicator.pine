@@ -1,0 +1,74 @@
+// Indicator: Supply and Demand Zones
+// This indicator identifies and displays supply and demand zones on a chart based on price action and volume. These zones represent price levels where strong buying (demand) or selling (supply) activity occurs, making them potential reversal points.
+// 
+// Key Components of the Indicator
+// Zone Identification Based on Price Action:
+// 
+// Supply Zone: A supply zone is identified when the price reaches a high (the highest high over a set number of bars) accompanied by high volume. This suggests potential resistance, where sellers may overpower buyers, leading to a price reversal.
+// Demand Zone: A demand zone is created when the price hits a low (the lowest low over a set number of bars) with high volume, indicating a potential support level where buyers could overpower sellers.
+// Volume Condition:
+// 
+// High volume is used to confirm these zones, as it indicates strong buying or selling interest. The indicator calculates an average volume over a lookback period, then multiplies it by a user-defined factor to establish a threshold for "high volume."
+// Horizontal Zone Plotting:
+// 
+// Once a supply or demand zone is identified, it is visually represented on the chart using horizontal boxes (rectangles). These boxes extend rightward across future bars, highlighting the area as a supply or demand zone.
+// Each zone persists for a set number of bars (configurable by zoneDuration). If the price remains near the zone, it continues to be highlighted; otherwise, the zone expires and is removed.
+// Visual Representation
+// Supply Zones are highlighted in red with a box at the highest high level, indicating a potential resistance area.
+// Demand Zones are highlighted in green with a box at the lowest low level, showing a potential support area.
+// Use Case
+// Traders use this indicator to:
+// 
+// Identify Support and Resistance Levels: Demand zones act as support, while supply zones act as resistance.
+// Spot Reversal Opportunities: Price often reverses direction when it reaches these zones, providing possible entry or exit points.
+// Confirm Breakouts: If the price breaks through a supply or demand zone with high volume, it may indicate a strong trend in that direction.
+
+//@version=5
+indicator("Supply and Demand Zones with Horizontal Plot", overlay=true)
+
+// Input Parameters
+zoneLookback = input.int(21, "Zone Lookback Period", minval=1)
+volMultiplier = input.float(1.5, "Volume Multiplier", step=0.1)
+zoneDuration = input.int(55, "Zone Duration (bars)", minval=1)
+supplyZoneColor = input.color(color.red, "Supply Zone Color")
+demandZoneColor = input.color(color.green, "Demand Zone Color")
+zoneTransparency = input.int(85, "Zone Transparency", minval=0, maxval=100)
+
+// Calculate Average Volume Threshold
+avgVolume = ta.sma(volume, zoneLookback)
+highVolume = avgVolume * volMultiplier
+
+// Identify Highest Highs and Lowest Lows for Zones
+highestHigh = ta.highest(high, zoneLookback)
+lowestLow = ta.lowest(low, zoneLookback)
+
+// Define Supply and Demand Conditions Based on Volume
+isSupplyZone = (high >= highestHigh) and (volume >= highVolume) // High price with high volume
+isDemandZone = (low <= lowestLow) and (volume >= highVolume)  // Low price with high volume
+
+// Initialize Variables for Zone Boxes
+var box supplyZoneBox = na
+var box demandZoneBox = na
+
+// Get the latest visible bar index to extend the box to the current visible candlestick
+rightEnd = last_bar_index
+
+// Create or Extend Supply Zone Box
+if isSupplyZone
+    if na(supplyZoneBox) 
+        supplyZoneBox := box.new(bar_index, highestHigh, rightEnd, low, bgcolor=color.new(supplyZoneColor, zoneTransparency), border_color=supplyZoneColor)
+    else
+        box.set_right(supplyZoneBox, rightEnd)
+else if not na(supplyZoneBox) and bar_index - box.get_left(supplyZoneBox) >= zoneDuration
+    box.delete(supplyZoneBox)
+    supplyZoneBox := na
+
+// Create or Extend Demand Zone Box
+if isDemandZone
+    if na(demandZoneBox) 
+        demandZoneBox := box.new(bar_index, high, rightEnd, lowestLow, bgcolor=color.new(demandZoneColor, zoneTransparency), border_color=demandZoneColor)
+    else
+        box.set_right(demandZoneBox, rightEnd)
+else if not na(demandZoneBox) and bar_index - box.get_left(demandZoneBox) >= zoneDuration
+    box.delete(demandZoneBox)
+    demandZoneBox := na
