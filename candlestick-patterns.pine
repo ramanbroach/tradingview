@@ -1,0 +1,226 @@
+//@version=5
+indicator(title="Raman's - Candlestick Patterns", overlay=true)
+
+// ──────────────────────────────
+// User Inputs (all patterns enabled by default)
+// ──────────────────────────────
+hammerInput         = input.bool(true,  title="Hammer")
+hangingManInput     = input.bool(true,  title="Hanging Man")
+marubozuInput       = input.bool(true,  title="Marubozu")
+engulfingInput      = input.bool(true,  title="Engulfing Patterns")
+darkCloudCoverInput = input.bool(true,  title="Dark Cloud Cover")
+piercingInput       = input.bool(true,  title="Piercing Pattern")
+morningStarInput    = input.bool(true,  title="Morning Star")
+eveningStarInput    = input.bool(true,  title="Evening Star")
+shootingStarInput   = input.bool(true,  title="Shooting Star")
+invertedHammerInput = input.bool(true,  title="Inverted Hammer")
+
+// ──────────────────────────────
+// Threshold Settings (default now set to 60)
+// ──────────────────────────────
+hammerThreshold         = input.int(60, title="Show Hammer only if above")
+hangingManThreshold     = input.int(60, title="Show Hangin man only if above")
+engulfingThreshold      = input.int(60, title="Show Engulfing only if above")
+darkCloudCoverThreshold = input.int(60, title="Show Dark cloud cover only if above")
+piercingThreshold       = input.int(60, title="Show Piercing only if above")
+morningStarThreshold    = input.int(60, title="Show Morning Star only if above")
+eveningStarThreshold    = input.int(60, title="Show Evening Star only if above")
+shootingStarThreshold   = input.int(60, title="Show Shooting Star only if above")
+invertedHammerThreshold = input.int(60, title="Show Inverted Hammer only if above")
+
+// ──────────────────────────────
+// Candle Component Calculations
+// ──────────────────────────────
+realBody    = math.abs(close - open)
+upperShadow = high - math.max(close, open)
+lowerShadow = math.min(close, open) - low
+candleRange = high - low
+adjRealBody = realBody == 0 ? 0.001 : realBody
+
+// ──────────────────────────────
+// EMA (retained for potential future use)
+// ──────────────────────────────
+ema21 = ta.ema(close, 21)
+
+// ──────────────────────────────
+// Universal Trend Conditions
+// ──────────────────────────────
+// Uptrend: previous candle's open is lower than current candle's open.
+uptrendUniversal   = open[1] < open[0]
+// Downtrend: previous candle's open is higher than current candle's open.
+downtrendUniversal = open[1] > open[0]
+
+// ──────────────────────────────
+// Hammer / Hanging Man Pattern
+// ──────────────────────────────
+smallBody          = realBody <= (candleRange * 0.3)
+longLowerShadow    = lowerShadow >= (2 * realBody)
+minimalUpperShadow = upperShadow <= (realBody * 0.1)
+hammerShape        = smallBody and longLowerShadow and minimalUpperShadow
+
+// For our purposes:
+// • Hammer (bullish reversal) is valid in a downtrend (i.e. not uptrend)
+// • Hanging Man (bearish reversal) is valid in an uptrend
+isHammer     = hammerShape and (not uptrendUniversal)
+isHangingMan = hammerShape and uptrendUniversal
+
+patternProb = math.round(50 + ((lowerShadow / adjRealBody) - 2) * 10)
+patternProb := math.min(100, math.max(0, patternProb))
+
+hammerLabelText  = "Hammer\n(" + str.tostring(patternProb) + "%)"
+hangingLabelText = "Hanging Man\n(" + str.tostring(patternProb) + "%)"
+
+if isHammer and hammerInput and patternProb >= hammerThreshold
+    label.new(bar_index, low, hammerLabelText, xloc=xloc.bar_index, yloc=yloc.belowbar, 
+      style=label.style_label_up, color=color.green, textcolor=color.white)
+
+if isHangingMan and hangingManInput and patternProb >= hangingManThreshold
+    label.new(bar_index, high, hangingLabelText, xloc=xloc.bar_index, yloc=yloc.abovebar, 
+      style=label.style_label_down, color=color.red, textcolor=color.white)
+
+// ──────────────────────────────
+// Marubozu Pattern
+// ──────────────────────────────
+isMarubozu = (upperShadow <= candleRange * 0.05) and (lowerShadow <= candleRange * 0.05)
+barcolor(marubozuInput and isMarubozu ? color.fuchsia : na)
+
+// ──────────────────────────────
+// Engulfing Pattern
+// ──────────────────────────────
+// Bullish Engulfing: previous candle bearish, current candle bullish, engulfing the previous body.
+bullishEngulfing = (close[1] < open[1]) and (close > open) and (open < close[1]) and (close > open[1]) and (not uptrendUniversal)
+// Bearish Engulfing: previous candle bullish, current candle bearish, engulfing the previous body.
+bearishEngulfing = (close[1] > open[1]) and (close < open) and (open > close[1]) and (close < open[1]) and uptrendUniversal
+
+eps = 0.001
+prevBody = math.abs(close[1] - open[1]) < eps ? eps : math.abs(close[1] - open[1])
+// Calculate engulfing strength as the relative difference between current body and previous body.
+bullishStrength = bullishEngulfing ? math.min(100, math.round(100 * ((math.abs(close - open) - math.abs(close[1] - open[1])) / prevBody))) : 0
+bearishStrength = bearishEngulfing ? math.min(100, math.round(100 * ((math.abs(close[1] - open[1]) - math.abs(close - open)) / prevBody))) : 0
+
+if bullishEngulfing and engulfingInput and bullishStrength >= engulfingThreshold
+    label.new(bar_index, low, "Engulfing\n(" + str.tostring(bullishStrength) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+if bearishEngulfing and engulfingInput and bearishStrength >= engulfingThreshold
+    label.new(bar_index, high, "Engulfing\n(" + str.tostring(bearishStrength) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+
+// ──────────────────────────────
+// Dark Cloud Cover Pattern
+// ──────────────────────────────
+// Conditions for Dark Cloud Cover:
+// • Previous candle is bullish.
+// • Current candle is bearish.
+// • Previous candle's body is larger than current candle's body.
+// • Current candle opens above the previous high.
+// • Current candle closes within the previous candle's body (between its open and close) and above its low.
+// • Occurs in an uptrend.
+darkCloudCover = (close[1] > open[1]) and 
+                 (close < open) and 
+                 ((close[1] - open[1]) > math.abs(close - open)) and 
+                 (open > high[1]) and 
+                 (close < close[1]) and (close > open[1]) and 
+                 (close > low[1]) and 
+                 uptrendUniversal
+
+dcBodySize    = close[1] - open[1]
+dcProbability = dcBodySize != 0 ? math.round(100 * ((close[1] - close) / dcBodySize)) : 0
+dcProbability := math.min(100, math.max(0, dcProbability))
+
+if darkCloudCover and darkCloudCoverInput and dcProbability >= darkCloudCoverThreshold
+    label.new(bar_index, high, "Dark Cloud Cover\n(" + str.tostring(dcProbability) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+
+// ──────────────────────────────
+// Piercing Pattern
+// ──────────────────────────────
+// Conditions for Piercing Pattern:
+// • Previous candle is bearish.
+// • Current candle is bullish.
+// • Previous candle's body is larger than current candle's body.
+// • Current candle opens below the previous candle's low.
+// • Current candle closes within the previous candle's body (below previous open and above previous close).
+// • Occurs in a downtrend.
+isPiercing = (close[1] < open[1]) and 
+             (close > open) and 
+             ((open[1] - close[1]) > math.abs(close - open)) and 
+             (open < low[1]) and 
+             (close < open[1]) and (close > close[1]) and 
+             downtrendUniversal
+
+piercingDenom = (open[1] - close[1])
+piercingProbability = piercingDenom != 0 ? math.round(100 * ((open[1] - close) / piercingDenom)) : 0
+piercingProbability := math.min(100, math.max(0, piercingProbability))
+
+if isPiercing and piercingInput and piercingProbability >= piercingThreshold
+    // Piercing pattern is bullish so label is green.
+    label.new(bar_index, low, "Piercing\n(" + str.tostring(piercingProbability) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+
+// ──────────────────────────────
+// Morning Star Pattern
+// ──────────────────────────────
+// A three-candle bullish reversal after a downtrend:
+// • Candle1 (index 2): Long bearish candle.
+// • Candle2 (index 1): Small-bodied candle (doji) that gaps down.
+// • Candle3 (current): Bullish candle that gaps up and closes above Candle1’s midpoint.
+msCandle1 = (close[2] < open[2]) and ((open[2] - close[2]) > 0.5 * (high[2] - low[2]))
+msCandle2 = (math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1])) and (open[1] < close[2]) and (close[1] < close[2])
+msCandle3 = (close > open) and (open > close[1]) and (close > ((open[2] + close[2]) / 2))
+isMorningStar = msCandle1 and msCandle2 and msCandle3 and downtrendUniversal
+
+msMid    = (open[2] + close[2]) / 2
+msMaxPen = (open[2] - close[2]) / 2
+msActual = close > msMid ? (close - msMid) : 0
+msProb   = msMaxPen != 0 ? math.round(100 * (msActual / msMaxPen)) : 0
+msProb   := math.min(100, math.max(0, msProb))
+
+if morningStarInput and isMorningStar and msProb >= morningStarThreshold
+    label.new(bar_index, high, "Morning Star\n(" + str.tostring(msProb) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
+
+// ──────────────────────────────
+// Evening Star Pattern
+// ──────────────────────────────
+// A three-candle bearish reversal after an uptrend:
+// • Candle1 (index 2): Long bullish candle.
+// • Candle2 (index 1): Small-bodied candle that gaps up.
+// • Candle3 (current): Bearish candle that gaps down and closes below Candle1’s midpoint.
+esCandle1 = (close[2] > open[2]) and ((close[2] - open[2]) > 0.5 * (high[2] - low[2]))
+esCandle2 = (math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1])) and (open[1] > close[2]) and (close[1] > close[2])
+esCandle3 = (close < open) and (open < close[1]) and (close < ((open[2] + close[2]) / 2))
+isEveningStar = esCandle1 and esCandle2 and esCandle3 and uptrendUniversal
+
+esMid    = (open[2] + close[2]) / 2
+esMaxPen = (close[2] - open[2]) / 2
+esActual = close < esMid ? (esMid - close) : 0
+esProb   = esMaxPen != 0 ? math.round(100 * (esActual / esMaxPen)) : 0
+esProb   := math.min(100, math.max(0, esProb))
+
+if eveningStarInput and isEveningStar and esProb >= eveningStarThreshold
+    label.new(bar_index, low, "Evening Star\n(" + str.tostring(esProb) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
+
+// ──────────────────────────────
+// Shooting Star Pattern
+// ──────────────────────────────
+// A single-candle bearish reversal in an uptrend with a small body near the bottom, long upper shadow, and minimal lower shadow.
+isShootingStar = uptrendUniversal and (realBody < candleRange * 0.3) and (upperShadow >= 2 * realBody) and (lowerShadow < 0.1 * realBody)
+shootingProb = math.round(100 * (upperShadow / (upperShadow + realBody)))
+shootingProb := math.min(100, math.max(0, shootingProb))
+
+if shootingStarInput and isShootingStar and shootingProb >= shootingStarThreshold
+    label.new(bar_index, high, "Shooting Star\n(" + str.tostring(shootingProb) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+
+// ──────────────────────────────
+// Inverted Hammer Pattern
+// ──────────────────────────────
+// A single-candle bullish reversal in a downtrend with a small body near the bottom, long upper shadow, and minimal lower shadow.
+isInvertedHammer = downtrendUniversal and (realBody < candleRange * 0.3) and (upperShadow >= 2 * realBody) and (lowerShadow < 0.1 * realBody)
+invertedProb = math.round(100 * (upperShadow / (upperShadow + realBody)))
+invertedProb := math.min(100, math.max(0, invertedProb))
+
+if invertedHammerInput and isInvertedHammer and invertedProb >= invertedHammerThreshold
+    label.new(bar_index, low, "Inverted Hammer\n(" + str.tostring(invertedProb) + "%)", 
+      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
