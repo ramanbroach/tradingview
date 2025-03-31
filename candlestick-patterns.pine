@@ -1,226 +1,89 @@
 //@version=5
-indicator(title="Raman's - Candlestick Patterns", overlay=true)
+indicator("Raman's - Candlestick Patterns version 2", overlay=true, shorttitle="RamanCP v2")
 
-// ──────────────────────────────
-// User Inputs (all patterns enabled by default)
-// ──────────────────────────────
-hammerInput         = input.bool(true,  title="Hammer")
-hangingManInput     = input.bool(true,  title="Hanging Man")
-marubozuInput       = input.bool(true,  title="Marubozu")
-engulfingInput      = input.bool(true,  title="Engulfing Patterns")
-darkCloudCoverInput = input.bool(true,  title="Dark Cloud Cover")
-piercingInput       = input.bool(true,  title="Piercing Pattern")
-morningStarInput    = input.bool(true,  title="Morning Star")
-eveningStarInput    = input.bool(true,  title="Evening Star")
-shootingStarInput   = input.bool(true,  title="Shooting Star")
-invertedHammerInput = input.bool(true,  title="Inverted Hammer")
+// User settings for pattern sensitivity
+sensitivity = input.float(title="Doji Tolerance (%)", defval=0.1, minval=0.01, step=0.01) * 0.01
+bodyRatio   = input.float(title="Body Ratio for patterns", defval=0.5, minval=0.1, step=0.1)
 
-// ──────────────────────────────
-// Threshold Settings (default now set to 60)
-// ──────────────────────────────
-hammerThreshold         = input.int(60, title="Show Hammer only if above")
-hangingManThreshold     = input.int(60, title="Show Hangin man only if above")
-engulfingThreshold      = input.int(60, title="Show Engulfing only if above")
-darkCloudCoverThreshold = input.int(60, title="Show Dark cloud cover only if above")
-piercingThreshold       = input.int(60, title="Show Piercing only if above")
-morningStarThreshold    = input.int(60, title="Show Morning Star only if above")
-eveningStarThreshold    = input.int(60, title="Show Evening Star only if above")
-shootingStarThreshold   = input.int(60, title="Show Shooting Star only if above")
-invertedHammerThreshold = input.int(60, title="Show Inverted Hammer only if above")
+// Helper function: absolute value difference
+f_abs_diff(x, y) => math.abs(x - y)
 
-// ──────────────────────────────
-// Candle Component Calculations
-// ──────────────────────────────
-realBody    = math.abs(close - open)
-upperShadow = high - math.max(close, open)
-lowerShadow = math.min(close, open) - low
-candleRange = high - low
-adjRealBody = realBody == 0 ? 0.001 : realBody
+// Calculate candle parts
+candleBody = math.abs(close - open)
+upperShadow = high - math.max(open, close)
+lowerShadow = math.min(open, close) - low
 
-// ──────────────────────────────
-// EMA (retained for potential future use)
-// ──────────────────────────────
-ema21 = ta.ema(close, 21)
+// Doji detection: when the body is very small compared to range
+doji = candleBody <= (high - low) * sensitivity
 
-// ──────────────────────────────
-// Universal Trend Conditions
-// ──────────────────────────────
-// Uptrend: previous candle's open is lower than current candle's open.
-uptrendUniversal   = open[1] < open[0]
-// Downtrend: previous candle's open is higher than current candle's open.
-downtrendUniversal = open[1] > open[0]
+// Hammer & Hanging Man: small body, little upper shadow, long lower shadow
+isHammer = (upperShadow <= candleBody * bodyRatio) and (lowerShadow >= candleBody * 2)
+hammerBodyPosition = (close >= open) ? "Bullish" : "Bearish"  // hammer style, but context matters
 
-// ──────────────────────────────
-// Hammer / Hanging Man Pattern
-// ──────────────────────────────
-smallBody          = realBody <= (candleRange * 0.3)
-longLowerShadow    = lowerShadow >= (2 * realBody)
-minimalUpperShadow = upperShadow <= (realBody * 0.1)
-hammerShape        = smallBody and longLowerShadow and minimalUpperShadow
+// Inverted Hammer & Shooting Star: small body, little lower shadow, long upper shadow
+isInvertedHammer = (lowerShadow <= candleBody * bodyRatio) and (upperShadow >= candleBody * 2)
+invertedBodyPosition = (close >= open) ? "Bullish" : "Bearish"
 
-// For our purposes:
-// • Hammer (bullish reversal) is valid in a downtrend (i.e. not uptrend)
-// • Hanging Man (bearish reversal) is valid in an uptrend
-isHammer     = hammerShape and (not uptrendUniversal)
-isHangingMan = hammerShape and uptrendUniversal
+// Engulfing Patterns: compare current candle to previous candle
+bullishEngulfing = (open[1] > close[1]) and (close > open) and (open < close[1]) and (close > open[1])
+bearishEngulfing = (open[1] < close[1]) and (close < open) and (open > close[1]) and (close < open[1])
 
-patternProb = math.round(50 + ((lowerShadow / adjRealBody) - 2) * 10)
-patternProb := math.min(100, math.max(0, patternProb))
+// Piercing Pattern: previous red candle followed by a bullish candle opening lower and closing above midpoint of previous body.
+piercing = (open[1] > close[1]) and (open < close[1]) and (close > (open[1] + close[1]) / 2) and (close < open[1])
 
-hammerLabelText  = "Hammer\n(" + str.tostring(patternProb) + "%)"
-hangingLabelText = "Hanging Man\n(" + str.tostring(patternProb) + "%)"
+// Dark Cloud Cover: previous bullish candle followed by a bearish candle opening above previous high and closing below midpoint.
+darkCloud = (open[1] < close[1]) and (open > close[1]) and (close < (open[1] + close[1]) / 2) and (close > open[1])
 
-if isHammer and hammerInput and patternProb >= hammerThreshold
-    label.new(bar_index, low, hammerLabelText, xloc=xloc.bar_index, yloc=yloc.belowbar, 
-      style=label.style_label_up, color=color.green, textcolor=color.white)
+// Morning Star & Evening Star
+// For stars, we need three candles. The middle one (star) should have a small body.
+starThreshold = (high - low) * sensitivity
 
-if isHangingMan and hangingManInput and patternProb >= hangingManThreshold
-    label.new(bar_index, high, hangingLabelText, xloc=xloc.bar_index, yloc=yloc.abovebar, 
-      style=label.style_label_down, color=color.red, textcolor=color.white)
+morningStar = (bar_index >= 2) and (close[2] < open[2]) and (doji[1] or f_abs_diff(open[1], close[1]) <= starThreshold) and (close > open) and (close > ((open[2] + close[2]) / 2))
+eveningStar = (bar_index >= 2) and (close[2] > open[2]) and (doji[1] or f_abs_diff(open[1], close[1]) <= starThreshold) and (close < open) and (close < ((open[2] + close[2]) / 2))
 
-// ──────────────────────────────
-// Marubozu Pattern
-// ──────────────────────────────
-isMarubozu = (upperShadow <= candleRange * 0.05) and (lowerShadow <= candleRange * 0.05)
-barcolor(marubozuInput and isMarubozu ? color.fuchsia : na)
+// Labeling on chart
+var label lbl = na
 
-// ──────────────────────────────
-// Engulfing Pattern
-// ──────────────────────────────
-// Bullish Engulfing: previous candle bearish, current candle bullish, engulfing the previous body.
-bullishEngulfing = (close[1] < open[1]) and (close > open) and (open < close[1]) and (close > open[1]) and (not uptrendUniversal)
-// Bearish Engulfing: previous candle bullish, current candle bearish, engulfing the previous body.
-bearishEngulfing = (close[1] > open[1]) and (close < open) and (open > close[1]) and (close < open[1]) and uptrendUniversal
+// Clear previous labels (optional: you can comment this out if you want to keep history)
+// if (lbl)
+//     label.delete(lbl)
 
-eps = 0.001
-prevBody = math.abs(close[1] - open[1]) < eps ? eps : math.abs(close[1] - open[1])
-// Calculate engulfing strength as the relative difference between current body and previous body.
-bullishStrength = bullishEngulfing ? math.min(100, math.round(100 * ((math.abs(close - open) - math.abs(close[1] - open[1])) / prevBody))) : 0
-bearishStrength = bearishEngulfing ? math.min(100, math.round(100 * ((math.abs(close[1] - open[1]) - math.abs(close - open)) / prevBody))) : 0
+// Function to plot a label at the candle's high with pattern name
+plotLabel(pattern, condition, ylocValue) =>
+    if condition
+        label.new(bar_index, ylocValue, pattern, style=label.style_label_up, color=color.new(color.blue, 0), textcolor=color.white, size=size.tiny)
 
-if bullishEngulfing and engulfingInput and bullishStrength >= engulfingThreshold
-    label.new(bar_index, low, "Engulfing\n(" + str.tostring(bullishStrength) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
-if bearishEngulfing and engulfingInput and bearishStrength >= engulfingThreshold
-    label.new(bar_index, high, "Engulfing\n(" + str.tostring(bearishStrength) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+// Plot signals on the chart
 
-// ──────────────────────────────
-// Dark Cloud Cover Pattern
-// ──────────────────────────────
-// Conditions for Dark Cloud Cover:
-// • Previous candle is bullish.
-// • Current candle is bearish.
-// • Previous candle's body is larger than current candle's body.
-// • Current candle opens above the previous high.
-// • Current candle closes within the previous candle's body (between its open and close) and above its low.
-// • Occurs in an uptrend.
-darkCloudCover = (close[1] > open[1]) and 
-                 (close < open) and 
-                 ((close[1] - open[1]) > math.abs(close - open)) and 
-                 (open > high[1]) and 
-                 (close < close[1]) and (close > open[1]) and 
-                 (close > low[1]) and 
-                 uptrendUniversal
+// Doji signal (we plot at mid candle for doji)
+plotLabel("Doji", doji, (high + low) / 2)
 
-dcBodySize    = close[1] - open[1]
-dcProbability = dcBodySize != 0 ? math.round(100 * ((close[1] - close) / dcBodySize)) : 0
-dcProbability := math.min(100, math.max(0, dcProbability))
+// Hammer / Hanging Man: color-code by context (hammer if in a downtrend, hanging man if in uptrend)
+// For simplicity, here we just label them as "Hammer" when condition met.
+plotLabel("Hammer", isHammer, low)
+plotLabel("Inverted Hammer", isInvertedHammer, high)
 
-if darkCloudCover and darkCloudCoverInput and dcProbability >= darkCloudCoverThreshold
-    label.new(bar_index, high, "Dark Cloud Cover\n(" + str.tostring(dcProbability) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+// Engulfing patterns
+plotLabel("Bull Engulf", bullishEngulfing, low)
+plotLabel("Bear Engulf", bearishEngulfing, high)
 
-// ──────────────────────────────
-// Piercing Pattern
-// ──────────────────────────────
-// Conditions for Piercing Pattern:
-// • Previous candle is bearish.
-// • Current candle is bullish.
-// • Previous candle's body is larger than current candle's body.
-// • Current candle opens below the previous candle's low.
-// • Current candle closes within the previous candle's body (below previous open and above previous close).
-// • Occurs in a downtrend.
-isPiercing = (close[1] < open[1]) and 
-             (close > open) and 
-             ((open[1] - close[1]) > math.abs(close - open)) and 
-             (open < low[1]) and 
-             (close < open[1]) and (close > close[1]) and 
-             downtrendUniversal
+// Piercing and Dark Cloud patterns
+plotLabel("Piercing", piercing, low)
+plotLabel("Dark Cloud", darkCloud, high)
 
-piercingDenom = (open[1] - close[1])
-piercingProbability = piercingDenom != 0 ? math.round(100 * ((open[1] - close) / piercingDenom)) : 0
-piercingProbability := math.min(100, math.max(0, piercingProbability))
+// Morning and Evening Stars (we label at the star candle, i.e., bar_index-1)
+if morningStar
+    label.new(bar_index-1, (high[1] + low[1]) / 2, "Morning Star", style=label.style_label_up, color=color.new(color.green, 0), textcolor=color.white, size=size.tiny)
+if eveningStar
+    label.new(bar_index-1, (high[1] + low[1]) / 2, "Evening Star", style=label.style_label_down, color=color.new(color.red, 0), textcolor=color.white, size=size.tiny)
 
-if isPiercing and piercingInput and piercingProbability >= piercingThreshold
-    // Piercing pattern is bullish so label is green.
-    label.new(bar_index, low, "Piercing\n(" + str.tostring(piercingProbability) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
-
-// ──────────────────────────────
-// Morning Star Pattern
-// ──────────────────────────────
-// A three-candle bullish reversal after a downtrend:
-// • Candle1 (index 2): Long bearish candle.
-// • Candle2 (index 1): Small-bodied candle (doji) that gaps down.
-// • Candle3 (current): Bullish candle that gaps up and closes above Candle1’s midpoint.
-msCandle1 = (close[2] < open[2]) and ((open[2] - close[2]) > 0.5 * (high[2] - low[2]))
-msCandle2 = (math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1])) and (open[1] < close[2]) and (close[1] < close[2])
-msCandle3 = (close > open) and (open > close[1]) and (close > ((open[2] + close[2]) / 2))
-isMorningStar = msCandle1 and msCandle2 and msCandle3 and downtrendUniversal
-
-msMid    = (open[2] + close[2]) / 2
-msMaxPen = (open[2] - close[2]) / 2
-msActual = close > msMid ? (close - msMid) : 0
-msProb   = msMaxPen != 0 ? math.round(100 * (msActual / msMaxPen)) : 0
-msProb   := math.min(100, math.max(0, msProb))
-
-if morningStarInput and isMorningStar and msProb >= morningStarThreshold
-    label.new(bar_index, high, "Morning Star\n(" + str.tostring(msProb) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
-
-// ──────────────────────────────
-// Evening Star Pattern
-// ──────────────────────────────
-// A three-candle bearish reversal after an uptrend:
-// • Candle1 (index 2): Long bullish candle.
-// • Candle2 (index 1): Small-bodied candle that gaps up.
-// • Candle3 (current): Bearish candle that gaps down and closes below Candle1’s midpoint.
-esCandle1 = (close[2] > open[2]) and ((close[2] - open[2]) > 0.5 * (high[2] - low[2]))
-esCandle2 = (math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1])) and (open[1] > close[2]) and (close[1] > close[2])
-esCandle3 = (close < open) and (open < close[1]) and (close < ((open[2] + close[2]) / 2))
-isEveningStar = esCandle1 and esCandle2 and esCandle3 and uptrendUniversal
-
-esMid    = (open[2] + close[2]) / 2
-esMaxPen = (close[2] - open[2]) / 2
-esActual = close < esMid ? (esMid - close) : 0
-esProb   = esMaxPen != 0 ? math.round(100 * (esActual / esMaxPen)) : 0
-esProb   := math.min(100, math.max(0, esProb))
-
-if eveningStarInput and isEveningStar and esProb >= eveningStarThreshold
-    label.new(bar_index, low, "Evening Star\n(" + str.tostring(esProb) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
-
-// ──────────────────────────────
-// Shooting Star Pattern
-// ──────────────────────────────
-// A single-candle bearish reversal in an uptrend with a small body near the bottom, long upper shadow, and minimal lower shadow.
-isShootingStar = uptrendUniversal and (realBody < candleRange * 0.3) and (upperShadow >= 2 * realBody) and (lowerShadow < 0.1 * realBody)
-shootingProb = math.round(100 * (upperShadow / (upperShadow + realBody)))
-shootingProb := math.min(100, math.max(0, shootingProb))
-
-if shootingStarInput and isShootingStar and shootingProb >= shootingStarThreshold
-    label.new(bar_index, high, "Shooting Star\n(" + str.tostring(shootingProb) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
-
-// ──────────────────────────────
-// Inverted Hammer Pattern
-// ──────────────────────────────
-// A single-candle bullish reversal in a downtrend with a small body near the bottom, long upper shadow, and minimal lower shadow.
-isInvertedHammer = downtrendUniversal and (realBody < candleRange * 0.3) and (upperShadow >= 2 * realBody) and (lowerShadow < 0.1 * realBody)
-invertedProb = math.round(100 * (upperShadow / (upperShadow + realBody)))
-invertedProb := math.min(100, math.max(0, invertedProb))
-
-if invertedHammerInput and isInvertedHammer and invertedProb >= invertedHammerThreshold
-    label.new(bar_index, low, "Inverted Hammer\n(" + str.tostring(invertedProb) + "%)", 
-      xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+// Optionally, you can also plot shapes on the chart for quick visual reference
+plotshape(doji, title="Doji", location=location.absolute, style=shape.circle, size=size.tiny, color=color.yellow, transp=0)
+plotshape(isHammer, title="Hammer", location=location.belowbar, style=shape.triangleup, size=size.tiny, color=color.blue, transp=0)
+plotshape(isInvertedHammer, title="Inverted Hammer", location=location.abovebar, style=shape.triangledown, size=size.tiny, color=color.purple, transp=0)
+plotshape(bullishEngulfing, title="Bullish Engulfing", location=location.belowbar, style=shape.labelup, size=size.tiny, text="BE", color=color.green, transp=0)
+plotshape(bearishEngulfing, title="Bearish Engulfing", location=location.abovebar, style=shape.labeldown, size=size.tiny, text="BE", color=color.red, transp=0)
+plotshape(piercing, title="Piercing", location=location.belowbar, style=shape.labelup, size=size.tiny, text="Pierce", color=color.green, transp=0)
+plotshape(darkCloud, title="Dark Cloud", location=location.abovebar, style=shape.labeldown, size=size.tiny, text="DCloud", color=color.red, transp=0)
+plotshape(morningStar, title="Morning Star", location=location.belowbar, style=shape.arrowup, size=size.tiny, color=color.green, transp=0)
+plotshape(eveningStar, title="Evening Star", location=location.abovebar, style=shape.arrowdown, size=size.tiny, color=color.red, transp=0)
