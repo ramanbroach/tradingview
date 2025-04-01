@@ -1,95 +1,85 @@
 //@version=6
 indicator("Raman's - Extended Candlestick Patterns", overlay=true, shorttitle="Extended Candles")
 
-//──────────────────────────────
-// Pattern Inputs (Alphabetically Sorted) - Group: Patterns
-//──────────────────────────────
-bearishBeltHoldInput       = input.bool(true, title="Bearish Belt Hold", group="Patterns")
-bearishHaramiInput         = input.bool(true, title="Bearish Harami", group="Patterns")
-bullishBeltHoldInput       = input.bool(true, title="Bullish Belt Hold", group="Patterns")
-bullishHaramiInput         = input.bool(true, title="Bullish Harami", group="Patterns")
-counterAttackInput         = input.bool(true, title="Counter Attack", group="Patterns")
-darkCloudCoverInput        = input.bool(true, title="Dark Cloud Cover", group="Patterns")
-engulfingInput             = input.bool(true, title="Engulfing", group="Patterns")
-eveningStarInput           = input.bool(true, title="Evening Star", group="Patterns")
-hammerInput                = input.bool(true, title="Hammer", group="Patterns")
-hangingManInput            = input.bool(true, title="Hanging Man", group="Patterns")
-invertedHammerInput        = input.bool(true, title="Inverted Hammer", group="Patterns")
-marubozuInput              = input.bool(true, title="Marubozu", group="Patterns")
-morningStarInput           = input.bool(true, title="Morning Star", group="Patterns")
-piercingInput              = input.bool(true, title="Piercing", group="Patterns")
-shootingStarInput          = input.bool(true, title="Shooting Star", group="Patterns")
-towerBottomsInput          = input.bool(true, title="Tower Bottoms", group="Patterns")
-towerTopInput              = input.bool(true, title="Tower Top", group="Patterns")
-tweezerBottomsInput        = input.bool(true, title="Tweezer Bottoms", group="Patterns")
-tweezerTopsInput           = input.bool(true, title="Tweezer Tops", group="Patterns")
-upsideGapTwoCrowsInput     = input.bool(true, title="Upside Gap Two Crows", group="Patterns")
-threeAdvWhiteSoldiersInput = input.bool(true, title="Three Advancing White Soldiers", group="Patterns")
-threeBlackCrowsInput       = input.bool(true, title="Three Black Crows", group="Patterns")
-threeMountainsInput        = input.bool(true, title="Three Mountains", group="Patterns")
-threeRiversInput           = input.bool(true, title="Three Rivers", group="Patterns")
+//============================================================================
+// Inputs (Patterns sorted alphabetically) - Group: Patterns
+//============================================================================
+bearishBeltHoldInput       = input.bool(true,  title="Bearish Belt Hold",       group="Patterns")
+bearishHaramiInput         = input.bool(true,  title="Bearish Harami",            group="Patterns")
+bullishBeltHoldInput       = input.bool(true,  title="Bullish Belt Hold",         group="Patterns")
+bullishHaramiInput         = input.bool(true,  title="Bullish Harami",            group="Patterns")
+counterAttackInput         = input.bool(true,  title="Counter Attack",            group="Patterns")
+darkCloudCoverInput        = input.bool(true,  title="Dark Cloud Cover",          group="Patterns")
+engulfingInput             = input.bool(true,  title="Engulfing",                 group="Patterns")
+eveningStarInput           = input.bool(true,  title="Evening Star",              group="Patterns")
+hammerInput                = input.bool(true,  title="Hammer",                    group="Patterns")
+hangingManInput            = input.bool(true,  title="Hanging Man",               group="Patterns")
+invertedHammerInput        = input.bool(true,  title="Inverted Hammer",           group="Patterns")
+marubozuInput              = input.bool(true,  title="Marubozu",                  group="Patterns")
+morningStarInput           = input.bool(true,  title="Morning Star",              group="Patterns")
+piercingInput              = input.bool(true,  title="Piercing",                  group="Patterns")
+shootingStarInput          = input.bool(true,  title="Shooting Star",             group="Patterns")
+towerBottomsInput          = input.bool(true,  title="Tower Bottoms",             group="Patterns")
+towerTopInput              = input.bool(true,  title="Tower Top",                 group="Patterns")
+tweezerBottomsInput        = input.bool(true,  title="Tweezer Bottoms",           group="Patterns")
+tweezerTopsInput           = input.bool(true,  title="Tweezer Tops",              group="Patterns")
+upsideGapTwoCrowsInput     = input.bool(true,  title="Upside Gap Two Crows",      group="Patterns")
+threeAdvWhiteSoldiersInput = input.bool(true,  title="Three Adv White Soldiers", group="Patterns")
+threeBlackCrowsInput       = input.bool(true,  title="Three Black Crows",         group="Patterns")
+threeMountainsInput        = input.bool(true,  title="Three Mountains",           group="Patterns")
+threeRiversInput           = input.bool(true,  title="Three Rivers",              group="Patterns")
 
-//──────────────────────────────
-// Confirmation Settings - Group: Confirmation
-//──────────────────────────────
+//============================================================================
+// Confirmation Settings - Group: Confirmation (shown at the bottom)
+//============================================================================
 showConfirmation = input.bool(true, title="Show after confirmation", group="Confirmation")
 
-//──────────────────────────────
+//============================================================================
 // Candle Component Calculations
-//──────────────────────────────
+//============================================================================
 realBody    = math.abs(close - open)
 upperShadow = high - math.max(close, open)
 lowerShadow = math.min(close, open) - low
 candleRange = high - low
 adjRealBody = realBody == 0 ? 0.001 : realBody
 
-//──────────────────────────────
-// Standard Trend Logic using 21-Period EMAs for Price and Volume
-//──────────────────────────────
+//============================================================================
+// Trend Logic using 21-Period EMAs for Price & Volume
+//============================================================================
 ema21    = ta.ema(close, 21)
 volEMA21 = ta.ema(volume, 21)
-bullishTrend = close < ema21 and volume > volEMA21    // For bullish reversal (e.g. hammer, piercing)
-bearishTrend = close > ema21 and volume > volEMA21    // For bearish reversal (e.g. hanging man, dark cloud)
+bullishTrend = close < ema21 and volume > volEMA21    // Downtrend with strong volume (favorable for bullish reversal)
+bearishTrend = close > ema21 and volume > volEMA21    // Uptrend with strong volume (favorable for bearish reversal)
 
-//──────────────────────────────
-// Pattern Confirmation Functions
-//──────────────────────────────
-// For reversal patterns, confirmation is provided by the next candle:
-// • For bullish patterns: confirm if current close > previous candle's high
-// • For bearish patterns: confirm if current close < previous candle's low
-// For multi-candle patterns (Morning/Evening Star), we use historical bars to form the pattern and use the current candle as confirmation.
+//============================================================================
+// Pattern Detection & Confirmation
+//============================================================================
 
-//──────────────────────────────
-// Hammer / Hanging Man
-//──────────────────────────────
+// ----- Hammer / Hanging Man -----
 smallBody          = realBody <= candleRange * 0.3
 longLowerShadow    = lowerShadow >= 2 * realBody
 minimalUpperShadow = upperShadow <= realBody * 0.1
 hammerShape        = smallBody and longLowerShadow and minimalUpperShadow
 
-isHammer     = hammerShape and bullishTrend   // Bullish reversal: Hammer
-isHangingMan = hammerShape and bearishTrend     // Bearish reversal: Hanging Man
+isHammer     = hammerShape and bullishTrend      // Hammer
+isHangingMan = hammerShape and bearishTrend        // Hanging Man
 
 if showConfirmation
     if isHammer[1] and hammerInput and close > high[1]
         label.new(bar_index - 1, low[1], "Hammer", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
     if isHangingMan[1] and hangingManInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Hanging Man", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Hanging\nMan", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if isHammer and hammerInput
         label.new(bar_index, low, "Hammer", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
     if isHangingMan and hangingManInput
-        label.new(bar_index, high, "Hanging Man", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Hanging\nMan", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Marubozu (Single-candle pattern – no extra confirmation)
-//──────────────────────────────
+// ----- Marubozu (no confirmation needed) -----
 isMarubozu = upperShadow <= candleRange * 0.05 and lowerShadow <= candleRange * 0.05
 barcolor(marubozuInput and isMarubozu ? color.fuchsia : na)
 
-//──────────────────────────────
-// Engulfing
-//──────────────────────────────
+// ----- Engulfing -----
 bullishEngulfing = close[1] < open[1] and close > open and open < close[1] and close > open[1] and bullishTrend
 bearishEngulfing = close[1] > open[1] and close < open and open > close[1] and close < open[1] and bearishTrend
 
@@ -104,203 +94,186 @@ else
     if bearishEngulfing and engulfingInput
         label.new(bar_index, high, "Engulfing", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Dark Cloud Cover
-//──────────────────────────────
-darkCloudCover = close[1] > open[1] and close < open and (close[1] - open[1]) > math.abs(close - open) and open > high[1] and close < close[1] and close > open[1] and close > low[1] and bearishTrend
+// ----- Dark Cloud Cover -----
+darkCloudCover = close[1] > open[1] and close < open and (close[1]-open[1]) > math.abs(close-open) and open > high[1] and close < close[1] and close > open[1] and close > low[1] and bearishTrend
 if showConfirmation
-    if darkCloudCover[1] and darkCloudCoverInput and close < ((open[1] + close[1]) / 2)
-        label.new(bar_index - 1, high[1], "Dark Cloud Cover", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+    if darkCloudCover[1] and darkCloudCoverInput and close < ((open[1]+close[1])/2)
+        label.new(bar_index - 1, high[1], "Dark\nCloud\nCover", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if darkCloudCover and darkCloudCoverInput
-        label.new(bar_index, high, "Dark Cloud Cover", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Dark\nCloud\nCover", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Piercing
-//──────────────────────────────
-isPiercing = close[1] < open[1] and close > open and (open[1] - close[1]) > math.abs(close - open) and open < low[1] and close < open[1] and close > close[1] and bullishTrend
+// ----- Piercing -----
+isPiercing = close[1] < open[1] and close > open and (open[1]-close[1]) > math.abs(close-open) and open < low[1] and close < open[1] and close > close[1] and bullishTrend
 if showConfirmation
-    if isPiercing[1] and piercingInput and close > ((open[1] + close[1]) / 2)
+    if isPiercing[1] and piercingInput and close > ((open[1]+close[1])/2)
         label.new(bar_index - 1, low[1], "Piercing", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 else
     if isPiercing and piercingInput
         label.new(bar_index, low, "Piercing", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Morning Star (Three-candle pattern with confirmation)
-//──────────────────────────────
-// Formation uses bars: [3], [2], [1] with confirmation on current bar.
-// If confirmed, mark the 4th previous candle (bar_index - 3)
-msCandle1 = close[3] < open[3] and (open[3] - close[3]) > 0.5 * (high[3] - low[3])
-msCandle2 = math.abs(close[2] - open[2]) < 0.3 * (high[2] - low[2]) and open[2] < close[3] and close[2] < close[3]
-msCandle3 = close[1] > open[1] and open[1] > close[2] and close[1] > (open[3] + close[3]) / 2
+// ----- Morning Star (3-candle pattern) -----
+// Uses bars [3], [2], [1] with confirmation on current bar. If confirmed, mark the 4th previous candle.
+msCandle1 = close[3] < open[3] and (open[3]-close[3]) > 0.5*(high[3]-low[3])
+msCandle2 = math.abs(close[2]-open[2]) < 0.3*(high[2]-low[2]) and open[2] < close[3] and close[2] < close[3]
+msCandle3 = close[1] > open[1] and open[1] > close[2] and close[1] > (open[3]+close[3])/2
 formedMorningStar = msCandle1 and msCandle2 and msCandle3 and bullishTrend[2]
 if showConfirmation
     if formedMorningStar and morningStarInput and close > high[1]
-        label.new(bar_index - 3, high[3], "Morning Star", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
+        label.new(bar_index - 3, high[3], "Morning\nStar", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
 else
-    msCandle1_im = close[2] < open[2] and (open[2] - close[2]) > 0.5 * (high[2] - low[2])
-    msCandle2_im = math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1]) and open[1] < close[2] and close[1] < close[2]
-    msCandle3_im = close > open and open > close[1] and close > (open[2] + close[2]) / 2
-    if msCandle1_im and msCandle2_im and msCandle3_im and bullishTrend and morningStarInput
-        label.new(bar_index, high, "Morning Star", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
+    if msCandle1 and msCandle2 and msCandle3 and bullishTrend and morningStarInput
+        label.new(bar_index, high, "Morning\nStar", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Evening Star (Three-candle pattern with confirmation)
-//──────────────────────────────
-esCandle1 = close[3] > open[3] and (close[3] - open[3]) > 0.5 * (high[3] - low[3])
-esCandle2 = math.abs(close[2] - open[2]) < 0.3 * (high[2] - low[2]) and open[2] > close[3] and close[2] > close[3]
-esCandle3 = close[1] < open[1] and open[1] < close[2] and close[1] < (open[3] + close[3]) / 2
+// ----- Evening Star (3-candle pattern) -----
+esCandle1 = close[3] > open[3] and (close[3]-open[3]) > 0.5*(high[3]-low[3])
+esCandle2 = math.abs(close[2]-open[2]) < 0.3*(high[2]-low[2]) and open[2] > close[3] and close[2] > close[3]
+esCandle3 = close[1] < open[1] and open[1] < close[2] and close[1] < (open[3]+close[3])/2
 formedEveningStar = esCandle1 and esCandle2 and esCandle3 and bearishTrend[2]
 if showConfirmation
     if formedEveningStar and eveningStarInput and close < low[1]
-        label.new(bar_index - 3, low[3], "Evening Star", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
+        label.new(bar_index - 3, low[3], "Evening\nStar", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
 else
-    esCandle1_im = close[2] > open[2] and (close[2] - open[2]) > 0.5 * (high[2] - low[2])
-    esCandle2_im = math.abs(close[1] - open[1]) < 0.3 * (high[1] - low[1]) and open[1] > close[2] and close[1] > close[2]
-    esCandle3_im = close < open and open < close[1] and close < (open[2] + close[2]) / 2
-    if esCandle1_im and esCandle2_im and esCandle3_im and bearishTrend and eveningStarInput
-        label.new(bar_index, low, "Evening Star", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
+    if esCandle1 and esCandle2 and esCandle3 and bearishTrend and eveningStarInput
+        label.new(bar_index, low, "Evening\nStar", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Shooting Star
-//──────────────────────────────
-isShootingStar = bearishTrend and realBody < candleRange * 0.3 and upperShadow >= 2 * realBody and lowerShadow < 0.1 * realBody
+// ----- Shooting Star -----
+isShootingStar = bearishTrend and realBody < candleRange*0.3 and upperShadow >= 2*realBody and lowerShadow < 0.1*realBody
 if showConfirmation
     if isShootingStar[1] and shootingStarInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Shooting Star", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Shooting\nStar", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
-    if shootingStarInput and isShootingStar
-        label.new(bar_index, high, "Shooting Star", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+    if isShootingStar and shootingStarInput
+        label.new(bar_index, high, "Shooting\nStar", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Inverted Hammer
-//──────────────────────────────
-isInvertedHammer = bullishTrend and realBody < candleRange * 0.3 and upperShadow >= 2 * realBody and lowerShadow < 0.1 * realBody
+// ----- Inverted Hammer -----
+isInvertedHammer = bullishTrend and realBody < candleRange*0.3 and upperShadow >= 2*realBody and lowerShadow < 0.1*realBody
 if showConfirmation
     if isInvertedHammer[1] and invertedHammerInput and close > high[1]
-        label.new(bar_index - 1, high[1], "Inverted Hammer", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Inverted\nHammer", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
 else
-    if invertedHammerInput and isInvertedHammer
-        label.new(bar_index, high, "Inverted Hammer", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
+    if isInvertedHammer and invertedHammerInput
+        label.new(bar_index, high, "Inverted\nHammer", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Bullish Harami
-//──────────────────────────────
+// ----- Bullish Harami / Bearish Harami -----
+// The label text is exactly the same as the setting title.
 bullishHarami = close[1] < open[1] and close > open and open > close[1] and close < open[1] and bullishTrend
-if showConfirmation
-    if bullishHarami[1] and bullishHaramiInput and close > high[1]
-        label.new(bar_index - 1, low[1], "Bullish Harami", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
-else
-    if bullishHarami and bullishHaramiInput
-        label.new(bar_index, low, "Bullish Harami", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
-
-//──────────────────────────────
-// Bearish Harami
-//──────────────────────────────
 bearishHarami = close[1] > open[1] and close < open and open < close[1] and close > open[1] and bearishTrend
 if showConfirmation
+    if bullishHarami[1] and bullishHaramiInput and close > high[1]
+        label.new(bar_index - 1, low[1], "Bullish\nHarami", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
     if bearishHarami[1] and bearishHaramiInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Bearish Harami", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Bearish\nHarami", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
+    if bullishHarami and bullishHaramiInput
+        label.new(bar_index, low, "Bullish\nHarami", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
     if bearishHarami and bearishHaramiInput
-        label.new(bar_index, high, "Bearish Harami", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Bearish\nHarami", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Tweezer Tops
-//──────────────────────────────
-tweezerTops = bearishTrend and math.abs(high - high[1]) < 0.05 * candleRange
+// ----- Tweezer Tops -----
+tweezerTops = bearishTrend and math.abs(high - high[1]) < 0.05*candleRange
 if showConfirmation
     if tweezerTops[1] and tweezerTopsInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Tweezer Tops", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Tweezer\nTops", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if tweezerTops and tweezerTopsInput
-        label.new(bar_index, high, "Tweezer Tops", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Tweezer\nTops", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Tweezer Bottoms
-//──────────────────────────────
-tweezerBottoms = bullishTrend and math.abs(low - low[1]) < 0.05 * candleRange
+// ----- Tweezer Bottoms -----
+tweezerBottoms = bullishTrend and math.abs(low - low[1]) < 0.05*candleRange
 if showConfirmation
     if tweezerBottoms[1] and tweezerBottomsInput and close > high[1]
-        label.new(bar_index - 1, low[1], "Tweezer Bottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index - 1, low[1], "Tweezer\nBottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 else
     if tweezerBottoms and tweezerBottomsInput
-        label.new(bar_index, low, "Tweezer Bottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index, low, "Tweezer\nBottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Upside Gap Two Crows
-//──────────────────────────────
-upsideGapTwoCrows = bearishTrend and close[2] > open[2] and close[1] < open[1] and close < open and open[1] > high[2] and close < close[2]
+// ----- Bullish Belt Hold / Bearish Belt Hold -----
+bullishBeltHold = bullishTrend and close > open and (open - low) < 0.05*candleRange and upperShadow < 0.1*realBody
+bearishBeltHold = bearishTrend and close < open and (high - open) < 0.05*candleRange and lowerShadow < 0.1*realBody
+if showConfirmation
+    if bullishBeltHold[1] and bullishBeltHoldInput and close > high[1]
+        label.new(bar_index - 1, low[1], "Bullish\nBelt\nHold", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    if bearishBeltHold[1] and bearishBeltHoldInput and close < low[1]
+        label.new(bar_index - 1, high[1], "Bearish\nBelt\nHold", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+else
+    if bullishBeltHold and bullishBeltHoldInput
+        label.new(bar_index, low, "Bullish\nBelt\nHold", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    if bearishBeltHold and bearishBeltHoldInput
+        label.new(bar_index, high, "Bearish\nBelt\nHold", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+
+// ----- Upside Gap Two Crows -----
+upsideGapTwoCrows = bearishTrend and close[2]>open[2] and close[1]<open[1] and close<open and open[1]>high[2] and close<close[2]
 if showConfirmation
     if upsideGapTwoCrows[1] and upsideGapTwoCrowsInput and close < close[1]
-        label.new(bar_index - 1, high[1], "Upside Gap Two Crows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Upside\nGap\nTwo\nCrows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if upsideGapTwoCrows and upsideGapTwoCrowsInput
-        label.new(bar_index, high, "Upside Gap Two Crows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Upside\nGap\nTwo\nCrows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Three Black Crows
-//──────────────────────────────
-threeBlackCrows = bearishTrend and close[2] < open[2] and close[1] < open[1] and close < open and close < close[1] and close[1] < close[2]
+// ----- Three Black Crows -----
+threeBlackCrows = bearishTrend and close[2]<open[2] and close[1]<open[1] and close<open and close<close[1] and close[1]<close[2]
 if showConfirmation
     if threeBlackCrows[1] and threeBlackCrowsInput and close < close[1]
-        label.new(bar_index - 1, high[1], "Three Black Crows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Three\nBlack\nCrows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if threeBlackCrows and threeBlackCrowsInput
-        label.new(bar_index, high, "Three Black Crows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Three\nBlack\nCrows", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Three Advancing White Soldiers
-//──────────────────────────────
-threeAdvWhiteSoldiers = bullishTrend and close[2] > open[2] and close[1] > open[1] and close > open and close > close[1] and close[1] > close[2]
+// ----- Three Adv White Soldiers -----
+threeAdvWhiteSoldiers = bullishTrend and close[2]>open[2] and close[1]>open[1] and close>open and close>close[1] and close[1]>close[2]
 if showConfirmation
     if threeAdvWhiteSoldiers[1] and threeAdvWhiteSoldiersInput and close > close[1]
-        label.new(bar_index - 1, low[1], "Three Adv White Soldiers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index - 1, low[1], "Three\nAdv\nWhite\nSoldiers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 else
     if threeAdvWhiteSoldiers and threeAdvWhiteSoldiersInput
-        label.new(bar_index, low, "Three Adv White Soldiers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index, low, "Three\nAdv\nWhite\nSoldiers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Three Mountains
-//──────────────────────────────
-threeMountains = bearishTrend and math.abs(high - high[1]) < 0.03 * candleRange and math.abs(high[1] - high[2]) < 0.03 * candleRange
+// ----- Three Mountains -----
+threeMountains = bearishTrend and math.abs(high - high[1]) < 0.03*candleRange and math.abs(high[1]-high[2]) < 0.03*candleRange
 if showConfirmation
     if threeMountains[1] and threeMountainsInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Three Mountains", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Three\nMountains", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if threeMountains and threeMountainsInput
-        label.new(bar_index, high, "Three Mountains", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Three\nMountains", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Three Rivers
-//──────────────────────────────
-threeRivers = bullishTrend and math.abs(low - low[1]) < 0.03 * candleRange and math.abs(low[1] - low[2]) < 0.03 * candleRange
+// ----- Three Rivers -----
+threeRivers = bullishTrend and math.abs(low - low[1]) < 0.03*candleRange and math.abs(low[1]-low[2]) < 0.03*candleRange
 if showConfirmation
     if threeRivers[1] and threeRiversInput and close > high[1]
-        label.new(bar_index - 1, low[1], "Three Rivers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index - 1, low[1], "Three\nRivers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 else
     if threeRivers and threeRiversInput
-        label.new(bar_index, low, "Three Rivers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index, low, "Three\nRivers", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 
-//──────────────────────────────
-// Tower Top
-//──────────────────────────────
-towerTop = bearishTrend and close[1] > open[1] and close < open and open < close[1]
+// ----- Tower Top -----
+towerTop = bearishTrend and close[1]>open[1] and close<open and open<close[1]
 if showConfirmation
     if towerTop[1] and towerTopInput and close < low[1]
-        label.new(bar_index - 1, high[1], "Tower Top", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index - 1, high[1], "Tower\nTop", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 else
     if towerTop and towerTopInput
-        label.new(bar_index, high, "Tower Top", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        label.new(bar_index, high, "Tower\nTop", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-//──────────────────────────────
-// Tower Bottoms
-//──────────────────────────────
-towerBottoms = bullishTrend and close[1] < open[1] and close > open and open > close[1]
+// ----- Tower Bottoms -----
+towerBottoms = bullishTrend and close[1]<open[1] and close>open and open>close[1]
 if showConfirmation
     if towerBottoms[1] and towerBottomsInput and close > high[1]
-        label.new(bar_index - 1, low[1], "Tower Bottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index - 1, low[1], "Tower\nBottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 else
     if towerBottoms and towerBottomsInput
-        label.new(bar_index, low, "Tower Bottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        label.new(bar_index, low, "Tower\nBottoms", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+
+// ----- Counter Attack -----
+counterAttack = math.abs(close - close[1]) < 0.05*candleRange and ((close > open and close[1] < open[1]) or (close < open and close[1] > open[1]))
+if showConfirmation
+    if counterAttack[1] and counterAttackInput and ((close > open and close > high[1]) or (close < open and close < low[1]))
+        label.new(bar_index - 1, close[1], "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color= close > open ? color.green : color.red, textcolor=color.white)
+else
+    if counterAttack and counterAttackInput
+        label.new(bar_index, close, "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color= close > open ? color.green : color.red, textcolor=color.white)
+
+//============================================================================
+// End of Code
+//============================================================================
