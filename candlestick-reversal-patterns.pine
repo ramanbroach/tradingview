@@ -1,5 +1,5 @@
 //@version=6
-indicator("Raman's - Extended Candlestick Patterns", overlay=true, shorttitle="Extended Candles")
+indicator("Raman's - Reversal Candlestick Patterns", overlay=true)
 
 //============================================================================
 // Inputs (Patterns sorted alphabetically) - Group: Patterns
@@ -15,7 +15,6 @@ eveningStarInput           = input.bool(true,  title="Evening Star",            
 hammerInput                = input.bool(true,  title="Hammer",                    group="Patterns")
 hangingManInput            = input.bool(true,  title="Hanging Man",               group="Patterns")
 invertedHammerInput        = input.bool(true,  title="Inverted Hammer",           group="Patterns")
-marubozuInput              = input.bool(true,  title="Marubozu",                  group="Patterns")
 morningStarInput           = input.bool(true,  title="Morning Star",              group="Patterns")
 piercingInput              = input.bool(true,  title="Piercing",                  group="Patterns")
 shootingStarInput          = input.bool(true,  title="Shooting Star",             group="Patterns")
@@ -75,10 +74,6 @@ else
     if isHangingMan and hangingManInput
         label.new(bar_index, high, "Hanging\nMan", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
 
-// ----- Marubozu (no confirmation needed) -----
-isMarubozu = upperShadow <= candleRange * 0.05 and lowerShadow <= candleRange * 0.05
-barcolor(marubozuInput and isMarubozu ? color.fuchsia : na)
-
 // ----- Engulfing -----
 bullishEngulfing = close[1] < open[1] and close > open and open < close[1] and close > open[1] and bullishTrend
 bearishEngulfing = close[1] > open[1] and close < open and open > close[1] and close < open[1] and bearishTrend
@@ -113,7 +108,7 @@ else
         label.new(bar_index, low, "Piercing", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
 
 // ----- Morning Star (3-candle pattern) -----
-// Uses bars [3], [2], [1] with confirmation on current bar. If confirmed, mark the 4th previous candle.
+// Uses bars [3],[2],[1] with confirmation on current bar. If confirmed, mark the 4th previous candle.
 msCandle1 = close[3] < open[3] and (open[3]-close[3]) > 0.5*(high[3]-low[3])
 msCandle2 = math.abs(close[2]-open[2]) < 0.3*(high[2]-low[2]) and open[2] < close[3] and close[2] < close[3]
 msCandle3 = close[1] > open[1] and open[1] > close[2] and close[1] > (open[3]+close[3])/2
@@ -156,7 +151,7 @@ else
         label.new(bar_index, high, "Inverted\nHammer", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.green, textcolor=color.white)
 
 // ----- Bullish Harami / Bearish Harami -----
-// The label text is exactly the same as the setting title.
+// The label text matches the setting title.
 bullishHarami = close[1] < open[1] and close > open and open > close[1] and close < open[1] and bullishTrend
 bearishHarami = close[1] > open[1] and close < open and open < close[1] and close > open[1] and bearishTrend
 if showConfirmation
@@ -269,10 +264,10 @@ else
 counterAttack = math.abs(close - close[1]) < 0.05*candleRange and ((close > open and close[1] < open[1]) or (close < open and close[1] > open[1]))
 if showConfirmation
     if counterAttack[1] and counterAttackInput and ((close > open and close > high[1]) or (close < open and close < low[1]))
-        label.new(bar_index - 1, close[1], "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color= close > open ? color.green : color.red, textcolor=color.white)
+        label.new(bar_index - 1, close[1], "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=(close > open ? color.green : color.red), textcolor=color.white)
 else
     if counterAttack and counterAttackInput
-        label.new(bar_index, close, "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color= close > open ? color.green : color.red, textcolor=color.white)
+        label.new(bar_index, close, "Counter\nAttack", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=(close > open ? color.green : color.red), textcolor=color.white)
 
 //============================================================================
 // End of Code
