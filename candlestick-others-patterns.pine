@@ -1,0 +1,109 @@
+//@version=6
+indicator("Raman's - Other Candlestick Patterns", overlay=true)
+
+//============================================================================
+// Inputs
+//============================================================================
+// Marubozu input (previously defined)
+marubozuInput = input.bool(true, title="Marubozu", group="Patterns")
+// Doji pattern inputs
+standardDojiInput    = input.bool(true, title="Standard Doji",    group="Doji Patterns")
+longLeggedDojiInput  = input.bool(true, title="Long-Legged Doji",  group="Doji Patterns")
+dragonflyDojiInput   = input.bool(true, title="Dragonfly Doji",   group="Doji Patterns")
+gravestoneDojiInput  = input.bool(true, title="Gravestone Doji",  group="Doji Patterns")
+// Confirmation toggle
+showConfirmation = input.bool(true, title="Show after confirmation", group="Confirmation")
+
+//============================================================================
+// Candle Component Calculations
+//============================================================================
+realBody    = math.abs(close - open)
+upperShadow = high - math.max(close, open)
+lowerShadow = math.min(close, open) - low
+candleRange = high - low
+adjCandleRange = candleRange == 0 ? 0.001 : candleRange  // Prevent division by zero
+
+//============================================================================
+// Marubozu Detection (Updated Criteria)
+//============================================================================
+// Criteria:
+// - Real body is at least 90% of the total range.
+// - Both shadows are ≤5% of the range.
+bullishMarubozu = marubozuInput and (close > open) and (realBody / adjCandleRange >= 0.9) and 
+                   (upperShadow / adjCandleRange <= 0.05) and (lowerShadow / adjCandleRange <= 0.05)
+bearishMarubozu = marubozuInput and (close < open) and (realBody / adjCandleRange >= 0.9) and 
+                   (upperShadow / adjCandleRange <= 0.05) and (lowerShadow / adjCandleRange <= 0.05)
+
+//============================================================================
+// Candle Highlighting
+//============================================================================
+// Color the candle white for bullish Marubozu and black for bearish Marubozu.
+barcolor(bullishMarubozu ? #FFFFFF : bearishMarubozu ? #000000 : na)
+
+//============================================================================
+// Trend Logic (for confirmation)
+//============================================================================
+ema21    = ta.ema(close, 21)
+volEMA21 = ta.ema(volume, 21)
+// For doji-based reversals, we consider:
+// - bullishTrend: a downtrend (price below EMA, high volume) favors bullish reversals.
+// - bearishTrend: an uptrend (price above EMA, high volume) favors bearish reversals.
+bullishTrend = close < ema21 and volume > volEMA21
+bearishTrend = close > ema21 and volume > volEMA21
+
+//============================================================================
+// Doji Pattern Detection
+//============================================================================
+dojiBodyThreshold    = candleRange * 0.1    // Body is ≤10% of range
+longShadowThreshold  = candleRange * 0.4    // Shadow is considered long if ≥40% of range
+
+isDoji = math.abs(close - open) <= dojiBodyThreshold
+
+// Define the doji types:
+isLongLeggedDoji  = isDoji and (upperShadow >= longShadowThreshold) and (lowerShadow >= longShadowThreshold)
+isDragonflyDoji   = isDoji and (upperShadow <= candleRange * 0.1) and (lowerShadow >= longShadowThreshold)
+isGravestoneDoji  = isDoji and (lowerShadow <= candleRange * 0.1) and (upperShadow >= longShadowThreshold)
+isStandardDoji    = isDoji and not(isLongLeggedDoji or isDragonflyDoji or isGravestoneDoji)
+
+//============================================================================
+// Doji Pattern Labeling with Confirmation Logic
+//============================================================================
+if showConfirmation
+    // For confirmation, we check the doji from the previous bar ([1]) and confirm using the current bar.
+    // Dragonfly Doji (bullish reversal): Should appear in a downtrend.
+    if isDragonflyDoji[1] and dragonflyDojiInput and bullishTrend[1] and close > high[1]
+        label.new(bar_index - 1, low[1], "Dragonfly\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    // Gravestone Doji (bearish reversal): Should appear in an uptrend.
+    if isGravestoneDoji[1] and gravestoneDojiInput and bearishTrend[1] and close < low[1]
+        label.new(bar_index - 1, high[1], "Gravestone\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+    // Standard Doji: Confirm based on trend – if in a downtrend, require bullish confirmation.
+    if isStandardDoji[1] and standardDojiInput and bullishTrend[1] and close > high[1]
+        label.new(bar_index - 1, low[1], "Standard\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    // Standard Doji in an uptrend: require bearish confirmation.
+    if isStandardDoji[1] and standardDojiInput and bearishTrend[1] and close < low[1]
+        label.new(bar_index - 1, high[1], "Standard\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+    // Long-Legged Doji: Use similar confirmation logic.
+    if isLongLeggedDoji[1] and longLeggedDojiInput and bullishTrend[1] and close > high[1]
+        label.new(bar_index - 1, low[1], "Long-Legged\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    if isLongLeggedDoji[1] and longLeggedDojiInput and bearishTrend[1] and close < low[1]
+        label.new(bar_index - 1, high[1], "Long-Legged\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+else
+    // Without confirmation, label the doji pattern on the same bar.
+    if isDragonflyDoji and dragonflyDojiInput
+        label.new(bar_index, low, "Dragonfly\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+    if isGravestoneDoji and gravestoneDojiInput
+        label.new(bar_index, high, "Gravestone\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+    if isStandardDoji and standardDojiInput
+        if bullishTrend
+            label.new(bar_index, low, "Standard\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        else if bearishTrend
+            label.new(bar_index, high, "Standard\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        else
+            label.new(bar_index, low, "Standard\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.blue, textcolor=color.white)
+    if isLongLeggedDoji and longLeggedDojiInput
+        if bullishTrend
+            label.new(bar_index, low, "Long-Legged\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.green, textcolor=color.white)
+        else if bearishTrend
+            label.new(bar_index, high, "Long-Legged\nDoji", xloc=xloc.bar_index, yloc=yloc.abovebar, style=label.style_label_down, color=color.red, textcolor=color.white)
+        else
+            label.new(bar_index, low, "Long-Legged\nDoji", xloc=xloc.bar_index, yloc=yloc.belowbar, style=label.style_label_up, color=color.blue, textcolor=color.white)
